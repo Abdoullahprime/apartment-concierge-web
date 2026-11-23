@@ -3,6 +3,9 @@
 import { useEffect, useState } from 'react';
 import api from '@/lib/api';
 import { User, Role } from '@/lib/types';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { ErrorState } from '@/components/ui/ErrorState';
+import { useToast } from '@/contexts/ToastContext';
 
 const ROLE_COLOR: Record<string, { text: string; bg: string }> = {
   resident: { text: '#2E7D32', bg: '#2E7D321F' },
@@ -20,17 +23,25 @@ const FILTERS: { label: string; value: string }[] = [
 export default function PeoplePage() {
   const [users, setUsers] = useState<User[]>([]);
   const [filter, setFilter] = useState('');
+  const { toast } = useToast();
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ name: '', email: '', password: '', phone: '', role: 'resident' as Role, unitNumber: '', employeeId: '' });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
   async function load(role?: string) {
-    const url = role ? `/users?role=${role}` : '/users';
-    const { data } = await api.get(url);
-    setUsers(data);
-    setLoading(false);
+    setFetchError(false);
+    try {
+      const url = role ? `/users?role=${role}` : '/users';
+      const { data } = await api.get(url);
+      setUsers(data);
+    } catch {
+      setFetchError(true);
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => { load(filter || undefined); }, [filter]);
@@ -47,6 +58,7 @@ export default function PeoplePage() {
       setUsers((prev) => [...prev, data]);
       setShowForm(false);
       setForm({ name: '', email: '', password: '', phone: '', role: 'resident', unitNumber: '', employeeId: '' });
+      toast('Person added', 'success');
     } catch (e: any) {
       setError(e.response?.data?.message ?? 'Failed to add person');
     } finally {
@@ -56,11 +68,22 @@ export default function PeoplePage() {
 
   async function removePerson(id: string) {
     if (!confirm('Remove this person? This cannot be undone.')) return;
-    await api.delete(`/users/${id}`);
-    setUsers((prev) => prev.filter((u) => u.id !== id));
+    try {
+      await api.delete(`/users/${id}`);
+      setUsers((prev) => prev.filter((u) => u.id !== id));
+      toast('Person removed', 'success');
+    } catch {
+      toast('Failed to remove person', 'error');
+    }
   }
 
-  if (loading) return <p className="text-[#757575] text-sm">Loading…</p>;
+  if (fetchError) {
+    return (
+      <div className="max-w-3xl mx-auto">
+        <ErrorState onRetry={() => { setLoading(true); load(filter || undefined); }} />
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-3xl mx-auto space-y-4">
@@ -195,7 +218,12 @@ export default function PeoplePage() {
           );
         })}
         {users.length === 0 && (
-          <p className="text-center text-[#757575] text-sm py-8">No people found</p>
+          <EmptyState
+            title="No people found"
+            description={filter ? `No ${filter}s match the current filter.` : 'Add team members or residents to get started.'}
+            actionLabel="Add person"
+            onAction={() => setShowForm(true)}
+          />
         )}
       </div>
     </div>

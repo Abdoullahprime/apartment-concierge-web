@@ -3,15 +3,23 @@
 import { useEffect, useState } from 'react';
 import api from '@/lib/api';
 import { User } from '@/lib/types';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { ErrorState } from '@/components/ui/ErrorState';
 
 export default function DirectoryPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(false);
 
-  useEffect(() => {
-    api.get('/users').then(({ data }) => { setUsers(data); setLoading(false); });
-  }, []);
+  function load() {
+    setFetchError(false);
+    api.get('/users')
+      .then(({ data }) => { setUsers(data); setLoading(false); })
+      .catch(() => { setFetchError(true); setLoading(false); });
+  }
+
+  useEffect(() => { load(); }, []);
 
   const filtered = users.filter((u) => {
     const q = query.toLowerCase();
@@ -22,7 +30,13 @@ export default function DirectoryPage() {
     );
   }).filter((u) => u.role === 'resident' || u.role === 'guest');
 
-  if (loading) return <p className="text-[#757575] text-sm">Loading…</p>;
+  if (fetchError) {
+    return (
+      <div className="max-w-2xl mx-auto">
+        <ErrorState onRetry={() => { setLoading(true); load(); }} />
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-2xl mx-auto space-y-4">
@@ -35,7 +49,10 @@ export default function DirectoryPage() {
         className="w-full border border-[#E0E0E0] rounded-xl px-4 py-3 text-sm text-[#333333] focus:outline-none focus:ring-2 focus:ring-[#2E7D32]"
       />
       {filtered.length === 0 && (
-        <p className="text-[#757575] text-sm text-center py-8">No results</p>
+        <EmptyState
+          title={query ? 'No results' : 'No residents or guests yet'}
+          description={query ? `No one matches "${query}".` : 'Residents and guests will appear here once added.'}
+        />
       )}
       <div className="space-y-2">
         {filtered.map((u) => (

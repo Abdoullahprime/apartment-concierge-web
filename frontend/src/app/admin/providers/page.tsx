@@ -3,6 +3,9 @@
 import { useEffect, useState } from 'react';
 import api from '@/lib/api';
 import { Service } from '@/lib/types';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { ErrorState } from '@/components/ui/ErrorState';
+import { useToast } from '@/contexts/ToastContext';
 
 const CATEGORY_EMOJI: Record<string, string> = {
   restaurants: '🍽️', vehicle_hire: '🚗', private_chefs: '👨‍🍳',
@@ -45,23 +48,36 @@ function ServiceRow({ service, onToggle, onDelete }: {
 
 export default function ProvidersPage() {
   const [services, setServices] = useState<Service[]>([]);
+  const { toast } = useToast();
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ name: '', description: '', category: 'restaurants', features: '', contact: '' });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
   async function load() {
-    const { data } = await api.get('/services');
-    setServices(data);
-    setLoading(false);
+    setFetchError(false);
+    try {
+      const { data } = await api.get('/services');
+      setServices(data);
+    } catch {
+      setFetchError(true);
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => { load(); }, []);
 
   async function toggle(id: string, active: boolean) {
-    await api.patch(`/services/${id}/active`, { active });
-    setServices((prev) => prev.map((s) => s.id === id ? { ...s, active } : s));
+    try {
+      await api.patch(`/services/${id}/active`, { active });
+      setServices((prev) => prev.map((s) => s.id === id ? { ...s, active } : s));
+      toast(active ? 'Service activated' : 'Service deactivated', 'success');
+    } catch {
+      toast('Failed to update service', 'error');
+    }
   }
 
   async function deleteService(id: string) {
@@ -69,8 +85,9 @@ export default function ProvidersPage() {
     try {
       await api.delete(`/services/${id}`);
       setServices((prev) => prev.filter((s) => s.id !== id));
+      toast('Service deleted', 'success');
     } catch (e: any) {
-      alert(e.response?.data?.message ?? 'Cannot delete — active bookings exist. Deactivate instead.');
+      toast(e.response?.data?.message ?? 'Cannot delete — active bookings exist. Deactivate instead.', 'error');
     }
   }
 
@@ -86,6 +103,7 @@ export default function ProvidersPage() {
       setServices((prev) => [...prev, data]);
       setShowForm(false);
       setForm({ name: '', description: '', category: 'restaurants', features: '', contact: '' });
+      toast('Service added', 'success');
     } catch (e: any) {
       setError(e.response?.data?.message ?? 'Failed to add service');
     } finally {
@@ -93,7 +111,13 @@ export default function ProvidersPage() {
     }
   }
 
-  if (loading) return <p className="text-[#757575] text-sm">Loading…</p>;
+  if (fetchError) {
+    return (
+      <div className="max-w-3xl mx-auto">
+        <ErrorState onRetry={() => { setLoading(true); load(); }} />
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-3xl mx-auto space-y-4">
@@ -174,6 +198,14 @@ export default function ProvidersPage() {
       )}
 
       <div className="space-y-2">
+        {services.length === 0 && !showForm && (
+          <EmptyState
+            title="No services yet"
+            description="Add your first service provider to get started."
+            actionLabel="Add service"
+            onAction={() => setShowForm(true)}
+          />
+        )}
         {services.map((s) => (
           <ServiceRow key={s.id} service={s} onToggle={toggle} onDelete={deleteService} />
         ))}

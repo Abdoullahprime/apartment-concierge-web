@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import api from '@/lib/api';
 import { Booking, BookingStatus, STATUS_COLORS } from '@/lib/types';
+import { ErrorState } from '@/components/ui/ErrorState';
+import { useToast } from '@/contexts/ToastContext';
 
 const FILTERS: { label: string; value: string }[] = [
   { label: 'All', value: '' },
@@ -26,24 +28,47 @@ function StatusBadge({ status }: { status: BookingStatus }) {
 
 export default function AdminBookingsPage() {
   const [bookings, setBookings] = useState<Booking[]>([]);
+  const { toast } = useToast();
   const [filter, setFilter] = useState('');
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(false);
 
   async function load(status?: string) {
-    const url = status ? `/bookings?status=${status}` : '/bookings';
-    const { data } = await api.get(url);
-    setBookings(data);
-    setLoading(false);
+    setFetchError(false);
+    try {
+      const url = status ? `/bookings?status=${status}` : '/bookings';
+      const { data } = await api.get(url);
+      setBookings(data);
+    } catch {
+      setFetchError(true);
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => { load(filter || undefined); }, [filter]);
 
   async function updateStatus(id: string, status: BookingStatus) {
-    await api.patch(`/bookings/${id}/status`, { status });
-    setBookings((prev) => prev.map((b) => b.id === id ? { ...b, status } : b));
+    try {
+      await api.patch(`/bookings/${id}/status`, { status });
+      setBookings((prev) => prev.map((b) => b.id === id ? { ...b, status } : b));
+      const labels: Record<string, string> = {
+        confirmed: 'Booking confirmed', rejected: 'Booking rejected',
+        completed: 'Booking completed', cancelled: 'Booking cancelled',
+      };
+      toast(labels[status] ?? 'Status updated', ['rejected', 'cancelled'].includes(status) ? 'info' : 'success');
+    } catch {
+      toast('Failed to update status', 'error');
+    }
   }
 
-  if (loading) return <p className="text-[#757575] text-sm">Loading…</p>;
+  if (fetchError) {
+    return (
+      <div className="max-w-4xl mx-auto">
+        <ErrorState onRetry={() => { setLoading(true); load(filter || undefined); }} />
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto space-y-4">

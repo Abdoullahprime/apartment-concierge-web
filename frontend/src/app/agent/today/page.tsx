@@ -3,6 +3,9 @@
 import { useEffect, useState } from 'react';
 import api from '@/lib/api';
 import { Booking, BookingStatus, STATUS_COLORS } from '@/lib/types';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { ErrorState } from '@/components/ui/ErrorState';
+import { useToast } from '@/contexts/ToastContext';
 
 function StatusBadge({ status }: { status: BookingStatus }) {
   const color = STATUS_COLORS[status];
@@ -17,14 +20,19 @@ function StatusBadge({ status }: { status: BookingStatus }) {
 }
 
 export default function TodayPage() {
+  const { toast } = useToast();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(false);
 
   async function load() {
+    setFetchError(false);
     try {
       const today = new Date().toISOString().split('T')[0];
       const { data } = await api.get(`/bookings?date=${today}`);
       setBookings(data);
+    } catch {
+      setFetchError(true);
     } finally {
       setLoading(false);
     }
@@ -33,15 +41,28 @@ export default function TodayPage() {
   useEffect(() => { load(); }, []);
 
   async function updateStatus(id: string, status: BookingStatus) {
-    await api.patch(`/bookings/${id}/status`, { status });
-    setBookings((prev) =>
-      prev.map((b) => (b.id === id ? { ...b, status } : b))
-    );
+    try {
+      await api.patch(`/bookings/${id}/status`, { status });
+      setBookings((prev) => prev.map((b) => (b.id === id ? { ...b, status } : b)));
+      const labels: Record<string, string> = {
+        confirmed: 'Booking confirmed', rejected: 'Booking rejected',
+        completed: 'Booking marked completed',
+      };
+      toast(labels[status] ?? 'Status updated', status === 'rejected' ? 'info' : 'success');
+    } catch {
+      toast('Failed to update status — please try again', 'error');
+    }
   }
 
   const pending = bookings.filter((b) => b.status === 'pending');
 
-  if (loading) return <p className="text-[#757575] text-sm">Loading…</p>;
+  if (fetchError) {
+    return (
+      <div className="max-w-2xl mx-auto">
+        <ErrorState onRetry={() => { setLoading(true); load(); }} />
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-2xl mx-auto space-y-4">
@@ -55,9 +76,10 @@ export default function TodayPage() {
       </div>
 
       {bookings.length === 0 && (
-        <div className="bg-white rounded-2xl border border-[#E0E0E0] p-8 text-center">
-          <p className="text-[#757575]">No bookings for today</p>
-        </div>
+        <EmptyState
+          title="No bookings today"
+          description="There are no service bookings scheduled for today."
+        />
       )}
 
       {bookings.map((booking) => (
