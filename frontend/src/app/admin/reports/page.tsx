@@ -119,7 +119,7 @@ export default function ReportsPage() {
                 />
                 <Tooltip
                   contentStyle={{ borderRadius: 12, border: '1px solid #E0E0E0', fontSize: 12 }}
-                  formatter={(v: number) => [`${v} units`, 'Occupied']}
+                  formatter={(v: number | undefined) => [`${v ?? 0} units`, 'Occupied']}
                   labelFormatter={(l) => `Date: ${l}`}
                 />
                 <Line
@@ -156,7 +156,7 @@ export default function ReportsPage() {
                   <YAxis tick={{ fontSize: 11, fill: '#757575' }} allowDecimals={false} />
                   <Tooltip
                     contentStyle={{ borderRadius: 12, border: '1px solid #E0E0E0', fontSize: 12 }}
-                    formatter={(v: number) => [v, 'Bookings']}
+                    formatter={(v: number | undefined) => [v ?? 0, 'Bookings']}
                   />
                   <Bar dataKey="count" radius={[6, 6, 0, 0]}>
                     {byCategory.map((_, i) => (
