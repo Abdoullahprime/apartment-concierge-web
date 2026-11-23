@@ -1,26 +1,59 @@
 @import "tailwindcss";
 
+/* ── Design tokens ───────────────────────────────────────────────────────── */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Brand */
+  --ac-green-dark:   #1B5E20;
+  --ac-green:        #2E7D32;
+  --ac-green-light:  #388E3C;
+  --ac-green-tint:   #2E7D3215;
+
+  /* Semantic */
+  --ac-amber:  #F9A825;
+  --ac-blue:   #1565C0;
+  --ac-red:    #C62828;
+
+  /* Neutrals */
+  --ac-text-primary:   #1A1A1A;
+  --ac-text-secondary: #555555;
+  --ac-text-muted:     #999999;
+  --ac-bg:             #F5F5F5;
+  --ac-surface:        #FFFFFF;
+  --ac-border:         #EBEBEB;
+  --ac-border-strong:  #E0E0E0;
+
+  --background: var(--ac-bg);
+  --foreground: var(--ac-text-primary);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+/* ── Base ────────────────────────────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
 }
+
+/* ── Scrollbar (webkit) ──────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #D0D0D0; border-radius: 999px; }
+::-webkit-scrollbar-thumb:hover { background: #BBBBBB; }
+
+/* ── Focus ring ─────────────────────────────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid var(--ac-green);
+  outline-offset: 2px;
+}
+
+/* ── Utilities ──────────────────────────────────────────────────────────── */
+.safe-area-pb { padding-bottom: env(safe-area-inset-bottom, 0); }
