@@ -9,6 +9,7 @@ import { UnitsModule } from './units/units.module.js';
 import { ServicesCatalogueModule } from './services-catalogue/services-catalogue.module.js';
 import { BookingsModule } from './bookings/bookings.module.js';
 import { StaysModule } from './stays/stays.module.js';
+import { ReportsModule } from './reports/reports.module.js';
 
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
 
@@ -26,6 +27,7 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
     ServicesCatalogueModule,
     BookingsModule,
     StaysModule,
+    ReportsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
